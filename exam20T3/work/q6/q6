@@ -1,0 +1,65 @@
+#!/usr/bin/python3
+# COMP3311 20T2 Final Exam
+# Q6: discography for one group, given by Groups.id
+
+import sys
+import psycopg2
+
+# ... put helper functions here ...
+
+qry1 = '''
+select name from Groups where id = %s
+'''
+qry2 = '''
+select id, title, year, genre form Albums where made_by = %s
+order by year, title
+'''
+qry3 = '''
+select title, length, trackno from Songs where on_album = %s
+order by trackno
+'''
+
+db = None
+cur = None
+usage = f"Usage: {sys.argv[0]} GroupID"
+
+# process command-line args
+
+if len(sys.argv) < 2:
+   print(usage)
+   exit(1)
+groupID = sys.argv[1]
+if not groupID.isnumeric():
+   print(usage)
+   exit(1)
+
+try:
+   db = psycopg2.connect("dbname=music")
+
+   cur = db.cursor()
+   cur.execute(qry1, [groupID])
+   group = cur.fetchone()
+   if not group:
+      print("Invalid group ID")
+      exit(1)
+   print(f"Discography for {group[0]}")
+   cur.execute(qry2,[groupID])
+   for album in cur.fetchall():
+      print("-"*20)
+      aid, title, year, genre = album
+      print(f"{title} ({year}) ({genre})")
+      print("-"*20)
+      cur.execute(qry3, [aid])
+      tracks = cur.fetchall()
+      for track in tracks:
+         title, length, trackno = track
+         print(f"{trackno:2d}. {title} ({length//60}:{length%60:02d})")
+
+except psycopg2.Error as err:
+   print("DB error: ", err)
+finally:
+   if cur:
+       cur.close()
+   if db:
+      db.close()
+
