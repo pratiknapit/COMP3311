@@ -1,0 +1,33 @@
+drop table x;
+drop table y;
+
+create table x ( id integer primary key, name text unique );
+create table y ( id integer primary key, x_id integer references x(id), defn text );
+
+insert into x values (1, 'John');
+insert into x values (2, 'Amy');
+insert into x values (3, 'Adam');
+insert into x values (4, 'Mark');
+
+insert into y values (1, 1, 'lol');
+insert into y values (2, 1, 'lol');
+insert into y values (3, 2, 'lol');
+insert into y values (4, 2, 'lol');
+insert into y values (5, 3, 'lol');
+
+create or replace  view b(name, countx)
+as
+select x.name,count(y.id)
+from   x left outer join y on (x.id = y.x_id)
+group  by x.name;
+
+create or replace  view c(name, count)
+as 
+select distinct x.name,
+	(select count(x_id) from y where y.x_id = x.id) as count
+from x left outer join y on (x.id = y.x_id);
+
+
+
+
+

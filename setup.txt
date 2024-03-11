@@ -1,0 +1,3 @@
+ssh nw-syd-vxdb2
+source /localstorage/$USER/env
+psql -l

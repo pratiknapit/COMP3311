@@ -1,0 +1,93 @@
+#!/usr/bin/python3
+# COMP3311 21T3 exam ... property finder
+
+import sys
+import psycopg2
+import re
+
+# define any local helper functions here
+
+### set up some globals
+
+usage = f"Usage: {sys.argv[0]} type maxPrice #beds #baths #cars\n"\
+f"type is one of Apartment, House, Townhouse\n"\
+"maxPrice is upper bound; #x = exact match; 0 means don't care"
+
+types = ["Apartment", "House", "Townhouse"]
+db = None
+
+### process command-line args
+
+argc = len(sys.argv)
+if argc < 6:
+  print(usage)
+  exit(1)
+ptype = sys.argv[1]
+if not ptype in types:
+  print(usage)
+  exit(1)
+digits = re.compile("^\d+$")
+for arg in sys.argv[2:5]:
+  if not digits.match(arg):
+    print(usage)
+    exit(1)
+
+maxPrice = int(sys.argv[2])
+nbeds = int(sys.argv[3])
+nbaths = int(sys.argv[4])
+ncars = int(sys.argv[5])
+
+# manipulate database
+
+getProps = '''
+select p.id, p.list_price, address(p.id)
+from Properties p
+where ptype = %s and list_price <= %s and sold_price is null
+order by p.list_price, p.id
+'''
+
+getFeats = '''
+select feature, number
+from Features
+where property = %s
+'''
+
+try:
+
+  db = psycopg2.connect("dbname=property")
+
+  pcur = db.cursor()
+  fcur = db.cursor()
+
+  pcur.mogrify(getProps, [ptype, maxPrice])
+  pcur.execute(getProps, [ptype, maxPrice])
+
+  for prop in pcur.fetchall():
+    pid, price, addr = prop
+
+    actbeds = 0
+    actbaths = 0
+    actcars = 0
+    fcur.execute(getFeats, [pid])
+    for feat in fcur.fetchall():
+      fname, fno = feat
+      if fname == "bedrooms":
+        actbeds = fno
+      if fname == "bathrooms":
+        actbaths = fno
+      if fname == "carspaces":
+        actcars = fno
+      
+    if (nbeds == 0 or nbeds == actbeds) and (nbaths == 0 or nbaths == actbaths) and (ncars == 0 or ncars == actcars):
+      print(f"#{pid}: {addr}, {actbeds}br, {actbaths}ba, {actcars}car, ${price}")
+
+  fcur.close()
+  pcur.close()
+  
+
+except Exception as err:
+  print("DB error: ", err)
+finally:
+  if db:
+    db.close()
+

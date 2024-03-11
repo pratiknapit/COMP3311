@@ -1,0 +1,15 @@
+import psycopg2
+import sys
+
+if len(sys.argv) < 2:
+	print(f"Usage: {sys.argv[0]} DBname")
+	exit()
+db = sys.argv[1]
+try:
+	conn = psycopg2.connect("dbname="+db)
+	print(conn) # state of connection after opening
+	conn.close()
+	print(conn) # state of connection after closing
+except Exception as e:
+	print(f"Unable to connect to the database {db}")
+	print(e)
